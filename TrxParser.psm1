@@ -29,7 +29,7 @@ function ReadTestResult($Path){
 
 function ProcessTestResultSummary {
     Write-Debug "Begin processing TestResultSummary tag"
-    $TestResultSummary = New-Object -TypeName PsObject    
+    $TestResultSummary = New-Object -TypeName PsObject
     $TestResultSummary | Add-Member -MemberType NoteProperty -Name TrxFile -Value $Path
     $TestResultSummary | Add-Member -MemberType NoteProperty -Name Outcome -Value $FileContent.TestRun.ResultSummary.outcome
     $TestResultSummary | Add-Member -MemberType NoteProperty -Name Total -Value $FileContent.TestRun.ResultSummary.Counters.total
@@ -53,7 +53,7 @@ function ProcessTestResultSummary {
 
 function ProcessTestSettings {
     Write-Debug "Begin processing TestSettings tag"
-    $TestSettings = New-Object -TypeName PsObject    
+    $TestSettings = New-Object -TypeName PsObject
     $TestSettings | Add-Member -MemberType NoteProperty -Name Name -Value $FileContent.TestRun.TestSettings.name
     $TestSettings | Add-Member -MemberType NoteProperty -Name Id $FileContent.TestRun.TestSettings.id
     $TestSettings | Add-Member -MemberType NoteProperty -Name Description $FileContent.TestRun.TestSettings.Description
@@ -62,8 +62,8 @@ function ProcessTestSettings {
 }
 function ProcessTestTimes {
     Write-Debug "Begin processing Times tag"
-    $TestTimes = New-Object -TypeName PsObject    
-    
+    $TestTimes = New-Object -TypeName PsObject
+
     $StartTime = [datetime]::ParseExact($FileContent.TestRun.Times.start, "yyyy-MM-ddTHH:mm:ss.FFFFFFFK", $null)
     $EndTime = [datetime]::ParseExact($FileContent.TestRun.Times.finish, "yyyy-MM-ddTHH:mm:ss.FFFFFFFK", $null)
 
@@ -84,13 +84,13 @@ function ProcessFailedTests {
         $FailedTest | Add-Member -MemberType NoteProperty -Name ExecutionId -Value $UnitTestResult.executionId
         $FailedTest | Add-Member -MemberType NoteProperty -Name Message -Value $UnitTestResult.Output.ErrorInfo.Message
         $FailedTest | Add-Member -MemberType NoteProperty -Name StackTrace -Value $UnitTestResult.Output.ErrorInfo.StackTrace
-        
+
         $CompleteStackTrace = $UnitTestResult.Output.ErrorInfo.Message + "`n" + $UnitTestResult.Output.ErrorInfo.StackTrace
         $FailedTest | Add-Member -MemberType NoteProperty -Name CompleteStackTrace -Value $CompleteStackTrace
 
         $FailedTests += ,@($FailedTest)
     }
- 
+
     Write-Debug "Match with unit test definition..."
     foreach($FailedTest in $FailedTests){
         $XPath = "//ns:UnitTest/ns:Execution[@id='" + $FailedTest.ExecutionId + "']"
@@ -119,7 +119,7 @@ function ProcessNotFailedTest {
 
         $Results += ,@($Result)
     }
- 
+
     return $Results
 }
 
@@ -138,6 +138,28 @@ function ProcessTestResult($FileContent){
 }
 
 function Get-MsTestResult {
+    <#
+    .Synopsis
+    Parse .trx file to PsCustomObject
+
+    .Description
+    Parse .trx file that generated from MsTest (Visual Studio) into PsCustomObject
+
+    .Parameter Path
+    File path of the test result file path. It has to be a .trx file from MsTest.
+
+    .Parameter NameSpace
+    String of namespace of the .trx in the file.
+
+    .EXAMPLE
+    # Parse the .trx file
+    Get-MsTestResult -Path ".\testResult.trx"
+
+    .Example
+    # Parse the .trx file with different namespace
+    Get-MsTestResult -Path ".\testResult.trx" -NameSpace "http://microsoft.com/schemas/VisualStudio/TeamTest/2020"
+    #>
+
     param(
         [string]
         [alias('p')]
