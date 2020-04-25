@@ -1,50 +1,36 @@
 <#
- .Synopsis
-  Displays a visual representation of a calendar.
+  .Synopsis
+  Parse .trx file to PsCustomObject
 
  .Description
-  Displays a visual representation of a calendar. This function supports multiple months
-  and lets you highlight specific date ranges or days.
+  Parse .trx file that generated from MsTest (Visual Studio) into PsCustomObject
 
- .Parameter Start
-  The first month to display.
+ .Parameter Path
+  File path of the test result file path. It has to be a .trx file from MsTest.
 
- .Parameter End
-  The last month to display.
+ .Parameter NameSpace
+  String of namespace of the .trx in the file.
 
- .Parameter FirstDayOfWeek
-  The day of the month on which the week begins.
-
- .Parameter HighlightDay
-  Specific days (numbered) to highlight. Used for date ranges like (25..31).
-  Date ranges are specified by the Windows PowerShell range syntax. These dates are
-  enclosed in square brackets.
-
- .Parameter HighlightDate
-  Specific days (named) to highlight. These dates are surrounded by asterisks.
+ .EXAMPLE
+   # Parse the .trx file
+   Get-MsTestResult -Path ".\testResult.trx"
 
  .Example
-   # Show a default display of this month.
-   Show-Calendar
-
- .Example
-   # Display a date range.
-   Show-Calendar -Start "March, 2010" -End "May, 2010"
-
- .Example
-   # Highlight a range of days.
-   Show-Calendar -HighlightDay (1..10 + 22) -HighlightDate "December 25, 2008"
+   # Parse the .trx file with different namespace
+   Get-MsTestResult -Path ".\testResult.trx" -NameSpace "http://microsoft.com/schemas/VisualStudio/TeamTest/2020"
 #>
 
 
-function ReadTestResult($TestResultFilePath){
-    [xml]$FileContent = Get-Content -Path $TestResultFilePath
+function ReadTestResult($Path){
+    Write-Debug "Reading $Path and parse as XML"
+    [xml]$FileContent = Get-Content -Path $Path
     return $FileContent
 }
 
 function ProcessTestResultSummary {
+    Write-Debug "Begin processing TestResultSummary tag"
     $TestResultSummary = New-Object -TypeName PsObject    
-    $TestResultSummary | Add-Member -MemberType NoteProperty -Name TrxFile -Value $TestResultFilePath
+    $TestResultSummary | Add-Member -MemberType NoteProperty -Name TrxFile -Value $Path
     $TestResultSummary | Add-Member -MemberType NoteProperty -Name Outcome -Value $FileContent.TestRun.ResultSummary.outcome
     $TestResultSummary | Add-Member -MemberType NoteProperty -Name Total -Value $FileContent.TestRun.ResultSummary.Counters.total
     $TestResultSummary | Add-Member -MemberType NoteProperty -Name Passed -Value $FileContent.TestRun.ResultSummary.Counters.passed
@@ -66,6 +52,7 @@ function ProcessTestResultSummary {
 }
 
 function ProcessTestSettings {
+    Write-Debug "Begin processing TestSettings tag"
     $TestSettings = New-Object -TypeName PsObject    
     $TestSettings | Add-Member -MemberType NoteProperty -Name Name -Value $FileContent.TestRun.TestSettings.name
     $TestSettings | Add-Member -MemberType NoteProperty -Name Id $FileContent.TestRun.TestSettings.id
@@ -74,6 +61,7 @@ function ProcessTestSettings {
     return $TestSettings
 }
 function ProcessTestTimes {
+    Write-Debug "Begin processing Times tag"
     $TestTimes = New-Object -TypeName PsObject    
     
     $StartTime = [datetime]::ParseExact($FileContent.TestRun.Times.start, "yyyy-MM-ddTHH:mm:ss.FFFFFFFK", $null)
@@ -88,6 +76,7 @@ function ProcessTestTimes {
 
 function ProcessFailedTests {
     # Failed test
+    Write-Debug "Begin processing failed test..."
     $FailedTests = @()
     foreach($UnitTestResult in $FileContent.SelectNodes('//ns:UnitTestResult[@outcome="Failed"]', $ns)) {
         $FailedTest = New-Object -TypeName PsObject
@@ -102,7 +91,7 @@ function ProcessFailedTests {
         $FailedTests += ,@($FailedTest)
     }
  
-    Write-Verbose "Match with unit test definition"
+    Write-Debug "Match with unit test definition..."
     foreach($FailedTest in $FailedTests){
         $XPath = "//ns:UnitTest/ns:Execution[@id='" + $FailedTest.ExecutionId + "']"
         $TestDefinition = $FileContent.SelectNodes($XPath, $ns)
@@ -117,7 +106,7 @@ function ProcessFailedTests {
 }
 
 function ProcessNotFailedTest {
-    # All test parser
+    # All test result
     $Results = @()
     foreach($UnitTestResult in $FileContent.SelectNodes('//ns:UnitTestResult[@outcome!="Failed"]', $ns)) {
         $Result = New-Object -TypeName PsObject
@@ -146,22 +135,26 @@ function ProcessTestResult($FileContent){
     }
 }
 
-
-
-function Get-TestResult {
+function Get-MsTestResult {
     param(
         [string]
         [alias('p')]
-        $TestResultFilePath,
+        [Parameter(Position=0,mandatory=$true)]
+        $Path,
 
         [string]
         [alias('ns')]
+        [Parameter(Position=1,mandatory=$false)]
         $NameSpace = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"
     )
 
-    Write-Verbose "I found that $TestResultFilePath to be the last file being written. I am going to use this."
-    $FileContent = ReadTestResult($TestResultFilePath)
-    return ProcessTestResult($FileContent)
+    if ((Test-Path -Path $Path) -ne "True"){
+        throw "Cannot find test result file in $Path"
+    }
+
+    Write-Debug "Using $Path as the file to be read."
+    $FileContent = ReadTestResult($Path)
+    ProcessTestResult($FileContent)
 }
 
-Export-ModuleMember -Function Get-TestResult
+Export-ModuleMember -Function Get-MsTestResult
