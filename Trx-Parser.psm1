@@ -57,6 +57,28 @@ function ProcessTestResultSummary {
     return $TestResultSummary
 }
 
+function ProcessTestSettings {
+    $TestSettings = New-Object -TypeName psobject    
+    $TestSettings | Add-Member -MemberType NoteProperty -Name Name -Value $FileContent.TestRun.TestSettings.name
+    $TestSettings | Add-Member -MemberType NoteProperty -Name Id $FileContent.TestRun.TestSettings.id
+    $TestSettings | Add-Member -MemberType NoteProperty -Name Description $FileContent.TestRun.TestSettings.Description
+
+    return $TestSettings
+}
+
+function ProcessTestTimes {
+    $TestTimes = New-Object -TypeName psobject    
+    
+    $StartTime = [datetime]::ParseExact($FileContent.TestRun.Times.start, "yyyy-MM-ddTHH:mm:ss.FFFFFFFK", $null)
+    $EndTime = [datetime]::ParseExact($FileContent.TestRun.Times.finish, "yyyy-MM-ddTHH:mm:ss.FFFFFFFK", $null)
+
+    $TestTimes | Add-Member -MemberType NoteProperty -Name StartTime -Value $StartTime
+    $TestTimes | Add-Member -MemberType NoteProperty -Name EndTime -Value $EndTime
+    $TestTimes | Add-Member -MemberType NoteProperty -Name ElapsedTime -Value ($EndTime - $StartTime)
+
+    return $TestTimes
+}
+
 function ProcessTestResult($FileContent){
     $ns = new-object Xml.XmlNamespaceManager $FileContent.NameTable
     $ns.AddNamespace("ns", $NameSpace)
@@ -64,11 +86,14 @@ function ProcessTestResult($FileContent){
 
     # process test summary
 
+    # Process test times
+    ProcessTestTimes | Select-Object
+
     # process test settings
+    ProcessTestSettings | Select-Object
 
     # process test result summary
-    $TestResultSummary = ProcessTestResultSummary
-    $TestResultSummary
+    ProcessTestResultSummary | Select-Object
 
 
     # # Failed test
