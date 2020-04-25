@@ -106,6 +106,7 @@ function ProcessFailedTests {
 }
 
 function ProcessNotFailedTest {
+    Write-Debug "Begin processing non-failed test..."
     # All test result
     $Results = @()
     foreach($UnitTestResult in $FileContent.SelectNodes('//ns:UnitTestResult[@outcome!="Failed"]', $ns)) {
@@ -123,6 +124,7 @@ function ProcessNotFailedTest {
 }
 
 function ProcessTestResult($FileContent){
+    Write-Debug "Build MsTestResult object..."
     $ns = new-object Xml.XmlNamespaceManager $FileContent.NameTable
     $ns.AddNamespace("ns", $NameSpace)
 
@@ -154,6 +156,7 @@ function Get-MsTestResult {
 
     Write-Debug "Using $Path as the file to be read."
     $FileContent = ReadTestResult($Path)
+    Write-Debug "File has been read. Processing the file content..."
     ProcessTestResult($FileContent)
 }
 
