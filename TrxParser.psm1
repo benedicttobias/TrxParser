@@ -24,6 +24,11 @@
 function ReadTestResult($Path){
     Write-Debug "Reading $Path and parse as XML"
     [xml]$FileContent = Get-Content -Path $Path
+    
+    if ($null -eq $FileContent){
+        throw "$Path is null"
+    }
+
     return $FileContent
 }
 
